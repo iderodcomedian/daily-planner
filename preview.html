@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Planner — Preview</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0C0C10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Ambient glow */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 25% 15%, rgba(90,90,160,.12) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 75% 85%, rgba(50,50,100,.1) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    /* ── Scaling wrapper ────────────────────── */
+    .scene {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .device-wrap { transform-origin: center center; }
+
+    /* ── iPhone 15 Pro frame ────────────────── */
+    .device {
+      position: relative;
+      width: 393px;
+      height: 852px;
+      /* Titanium finish */
+      background: linear-gradient(155deg,
+        #2E2E30 0%, #242426 25%,
+        #1A1A1C 55%, #131315 100%);
+      border-radius: 56px;
+      box-shadow:
+        /* outer ring highlight */
+        0 0 0 1px rgba(255,255,255,.14),
+        /* inner ring */
+        0 0 0 1.5px rgba(0,0,0,.9),
+        /* drop shadow */
+        0 50px 120px rgba(0,0,0,.85),
+        0 16px 40px rgba(0,0,0,.5),
+        /* top surface sheen */
+        inset 0 1px 0 rgba(255,255,255,.13),
+        inset 0 -1px 0 rgba(255,255,255,.04);
+    }
+
+    /* Subtle titanium texture highlight */
+    .device::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 56px;
+      background: linear-gradient(130deg,
+        rgba(255,255,255,.06) 0%,
+        transparent 40%,
+        transparent 60%,
+        rgba(255,255,255,.02) 100%);
+      pointer-events: none;
+    }
+
+    /* ── Screen ─────────────────────────────── */
+    .screen {
+      position: absolute;
+      top: 6px; left: 6px; right: 6px; bottom: 6px;
+      border-radius: 50px;
+      overflow: hidden;
+      background: #000;
+      /* Prevent screen from being clickable on edges */
+      isolation: isolate;
+    }
+
+    .screen iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* ── Dynamic Island ─────────────────────── */
+    .dynamic-island {
+      position: absolute;
+      top: 13px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 126px;
+      height: 37px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ── Status bar ─────────────────────────── */
+    .status-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 59px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      z-index: 19;
+      pointer-events: none;
+    }
+    .sb-time {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1C1C1E;
+      letter-spacing: -.3px;
+      font-feature-settings: 'tnum';
+    }
+    .sb-right {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    /* ── Home indicator ─────────────────────── */
+    .home-bar {
+      position: absolute;
+      bottom: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 134px;
+      height: 5px;
+      background: #1C1C1E;
+      border-radius: 3px;
+      opacity: .22;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ── Hardware buttons ───────────────────── */
+    .btn {
+      position: absolute;
+      border-radius: 3px;
+      background: linear-gradient(to right, #2C2C2E, #1E1E20);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.09),
+        inset 0 -1px 0 rgba(0,0,0,.5),
+        -1px 0 2px rgba(0,0,0,.4);
+    }
+    .btn-silent   { left: -3px; top: 162px; width: 4px; height: 32px; border-radius: 2px 0 0 2px; }
+    .btn-vol-up   { left: -3px; top: 216px; width: 4px; height: 64px; border-radius: 2px 0 0 2px; }
+    .btn-vol-down { left: -3px; top: 296px; width: 4px; height: 64px; border-radius: 2px 0 0 2px; }
+    .btn-power    { right: -3px; top: 240px; width: 4px; height: 80px; border-radius: 0 2px 2px 0;
+                    box-shadow: inset 0 1px 0 rgba(255,255,255,.09), inset 0 -1px 0 rgba(0,0,0,.5), 1px 0 2px rgba(0,0,0,.4); }
+
+    /* ── Desk reflection ────────────────────── */
+    .reflection {
+      width: 300px;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(255,255,255,.06), transparent);
+      margin-top: 1px;
+    }
+
+    /* ── Caption ────────────────────────────── */
+    .caption {
+      font-size: 12px;
+      color: rgba(255,255,255,.25);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="device-wrap">
+    <div class="device">
+
+      <!-- Hardware buttons -->
+      <div class="btn btn-silent"></div>
+      <div class="btn btn-vol-up"></div>
+      <div class="btn btn-vol-down"></div>
+      <div class="btn btn-power"></div>
+
+      <!-- Screen -->
+      <div class="screen">
+
+        <!-- Status bar (above iframe) -->
+        <div class="status-bar">
+          <span class="sb-time" id="sb-time">9:41</span>
+          <div class="sb-right">
+            <!-- Cell signal bars -->
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="#1C1C1E">
+              <rect x="0"    y="7"   width="3.2" height="5"   rx=".8" opacity=".35"/>
+              <rect x="4.7"  y="4.5" width="3.2" height="7.5" rx=".8" opacity=".35"/>
+              <rect x="9.4"  y="2"   width="3.2" height="10"  rx=".8"/>
+              <rect x="14.1" y="0"   width="3.2" height="12"  rx=".8"/>
+            </svg>
+            <!-- WiFi -->
+            <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+              <circle cx="8" cy="11" r="1.5" fill="#1C1C1E"/>
+              <path d="M4.2 7.2a5.4 5.4 0 0 1 7.6 0"   stroke="#1C1C1E" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M1.5 4.5a9 9 0 0 1 13 0"         stroke="#1C1C1E" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <!-- Battery -->
+            <svg width="27" height="13" viewBox="0 0 27 13" fill="none">
+              <rect x=".5" y=".5" width="22" height="12" rx="3.5" stroke="#1C1C1E" stroke-opacity=".35"/>
+              <rect x="1.5" y="1.5" width="19" height="10" rx="2.5" fill="#1C1C1E"/>
+              <path d="M24.5 4.5v4a2.2 2.2 0 0 0 0-4z" fill="#1C1C1E" fill-opacity=".4"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Dynamic Island -->
+        <div class="dynamic-island"></div>
+
+        <!-- Home indicator -->
+        <div class="home-bar"></div>
+
+        <!-- App -->
+        <iframe id="app-frame" src="index.html" title="Daily Planner"></iframe>
+
+      </div>
+    </div>
+    <div class="reflection"></div>
+  </div>
+
+  <div class="caption">Daily Planner &nbsp;·&nbsp; iPhone 15 Pro</div>
+</div>
+
+<script>
+  // ── Live clock ──────────────────────────────────────────
+  function tick() {
+    const d = new Date();
+    const h = d.getHours() % 12 || 12;
+    const m = String(d.getMinutes()).padStart(2, '0');
+    document.getElementById('sb-time').textContent = `${h}:${m}`;
+  }
+  tick();
+  setInterval(tick, 15000);
+
+  // ── Inject safe-area simulation into iframe ─────────────
+  document.getElementById('app-frame').addEventListener('load', () => {
+    try {
+      const doc = document.getElementById('app-frame').contentDocument;
+      const s = doc.createElement('style');
+      // Simulate env(safe-area-inset-top: 59px) and env(safe-area-inset-bottom: 34px)
+      s.textContent = `
+        #nav {
+          height:      calc(var(--nav-h) + 59px) !important;
+          padding-top: 59px !important;
+        }
+        #main {
+          padding-top:    calc(var(--nav-h) + 59px + 20px)        !important;
+          padding-bottom: calc(var(--bot-h) + 34px + 12px)        !important;
+        }
+        #bot-bar {
+          height:         calc(var(--bot-h) + 34px) !important;
+          padding-bottom: 34px !important;
+        }
+        #sheet {
+          padding-bottom: calc(20px + 34px) !important;
+        }
+      `;
+      doc.head.appendChild(s);
+    } catch (e) { /* cross-origin guard */ }
+  });
+
+  // ── Fit device to viewport ──────────────────────────────
+  function fit() {
+    const vw  = window.innerWidth;
+    const vh  = window.innerHeight;
+    const dw  = 393 + 32;   // device + button overhang
+    const dh  = 852 + 80;   // device + caption + gap
+    const s   = Math.min(vw / dw, vh / dh, 1);
+    document.querySelector('.device-wrap').style.transform = `scale(${s})`;
+  }
+  fit();
+  window.addEventListener('resize', fit);
+</script>
+
+</body>
+</html>

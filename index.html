@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Planner">
+  <meta name="theme-color" content="#F2F2F7">
+  <title>Daily Planner</title>
+  <style>
+    :root {
+      --bg:       #F2F2F7;
+      --surface:  #FFFFFF;
+      --text:     #1C1C1E;
+      --muted:    #8E8E93;
+      --sep:      rgba(60,60,67,.18);
+      --danger:   #FF3B30;
+      --green:    #34C759;
+      --accent:   #1C1C1E;
+      --nav-h:    52px;
+      --bot-h:    72px;
+      --fs-lg:    20px;
+      --fs-md:    15px;
+      --fs-sm:    13px;
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: var(--fs-md);
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    /* ── Navigation bar ────────────────────────────── */
+    #nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      height: calc(var(--nav-h) + env(safe-area-inset-top));
+      padding-top: env(safe-area-inset-top);
+      background: rgba(242,242,247,.92);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: .5px solid var(--sep);
+      display: flex;
+      align-items: flex-end;
+      padding-left: 18px;
+      padding-right: 18px;
+      padding-bottom: 11px;
+    }
+    .nav-inner {
+      width: 100%;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .nav-title {
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      letter-spacing: -.3px;
+    }
+    .nav-date {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+    }
+
+    /* ── Scrollable main ───────────────────────────── */
+    #main {
+      position: fixed;
+      inset: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: none;
+      padding-top: calc(var(--nav-h) + env(safe-area-inset-top) + 20px);
+      padding-bottom: calc(var(--bot-h) + env(safe-area-inset-bottom) + 12px);
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    /* ── Section ───────────────────────────────────── */
+    .sec { margin-bottom: 32px; }
+    .sec-label {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+
+    /* ── Block cards ───────────────────────────────── */
+    #blocks-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .sw-wrap {
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .sw-actions {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      display: flex;
+    }
+    .sw-edit-btn, .sw-del-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: #fff;
+      min-width: 70px;
+      padding: 0 16px;
+    }
+    .sw-edit-btn { background: #636366; }
+    .sw-del-btn  { background: var(--danger); border-radius: 0 14px 14px 0; }
+
+    .bcard {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 13px 16px;
+      will-change: transform;
+      transform: translateX(0);
+      transition: transform .28s cubic-bezier(.25,.46,.45,.94);
+      cursor: pointer;
+      user-select: none;
+    }
+    .bcard.no-transition { transition: none; }
+
+    .bcard-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .bcard-time {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .bcard-dur {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      background: var(--bg);
+      border-radius: 20px;
+      padding: 2px 9px;
+    }
+    .bcard-title {
+      font-size: var(--fs-md);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .bcard-notes {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── Empty ─────────────────────────────────────── */
+    .empty {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 48px 20px;
+      text-align: center;
+    }
+    .empty-icon { margin-bottom: 12px; opacity: .28; }
+    .empty-text { font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; }
+
+    /* ── Templates list ────────────────────────────── */
+    .tpl-group {
+      background: var(--surface);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .tpl-row { position: relative; overflow: hidden; }
+    .tpl-row + .tpl-row::before {
+      content: '';
+      display: block;
+      height: .5px;
+      background: var(--sep);
+      margin-left: 16px;
+    }
+    .tpl-del-zone {
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      background: var(--danger);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+    }
+    .tpl-del-zone span {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: #fff;
+      pointer-events: none;
+    }
+    .tpl-inner {
+      position: relative;
+      z-index: 1;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      padding: 13px 16px;
+      gap: 12px;
+      cursor: pointer;
+      will-change: transform;
+      transform: translateX(0);
+      transition: transform .28s cubic-bezier(.25,.46,.45,.94);
+    }
+    .tpl-inner.no-transition { transition: none; }
+    .tpl-inner:active { background: #F2F2F7; }
+    .tpl-text { flex: 1; min-width: 0; }
+    .tpl-name {
+      font-size: var(--fs-md);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tpl-note {
+      font-size: var(--fs-sm);
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tpl-chev {
+      color: var(--muted);
+      font-size: 20px;
+      font-weight: 300;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    /* ── Bottom action bar ─────────────────────────── */
+    #bot-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 100;
+      height: calc(var(--bot-h) + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      background: rgba(242,242,247,.92);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-top: .5px solid var(--sep);
+      display: flex;
+      align-items: flex-start;
+      padding-top: 10px;
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    #add-btn {
+      width: 100%;
+      height: 50px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: var(--fs-md);
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: transform .12s, opacity .12s;
+      letter-spacing: .01em;
+    }
+    #add-btn:active { transform: scale(.97); opacity: .82; }
+
+    /* ── Overlay ───────────────────────────────────── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.42);
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .32s ease;
+    }
+    #overlay.show { opacity: 1; pointer-events: auto; }
+
+    /* ── Bottom sheet ──────────────────────────────── */
+    #sheet {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 201;
+      background: var(--surface);
+      border-radius: 22px 22px 0 0;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      transform: translateY(100%);
+      transition: transform .42s cubic-bezier(.32,1,.15,1);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #sheet.show { transform: translateY(0); }
+
+    .sh-handle-wrap {
+      flex-shrink: 0;
+      padding: 12px 0 4px;
+      display: flex;
+      justify-content: center;
+      cursor: grab;
+    }
+    .sh-handle {
+      width: 38px; height: 5px;
+      background: rgba(60,60,67,.3);
+      border-radius: 3px;
+    }
+    .sh-head {
+      flex-shrink: 0;
+      padding: 4px 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: .5px solid var(--sep);
+    }
+    .sh-title {
+      font-size: var(--fs-lg);
+      font-weight: 700;
+    }
+    .sh-close {
+      width: 30px; height: 30px;
+      border-radius: 15px;
+      background: var(--bg);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition: opacity .12s;
+    }
+    .sh-close:active { opacity: .5; }
+
+    .sh-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 22px 20px 8px;
+    }
+
+    /* ── Form ──────────────────────────────────────── */
+    .fg { margin-bottom: 20px; }
+    .fl {
+      display: block;
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: 8px;
+      padding-left: 2px;
+    }
+    .time-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    input[type="time"], .fi, .fta {
+      width: 100%;
+      padding: 14px;
+      background: var(--bg);
+      border: none;
+      border-radius: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: var(--fs-md);
+      color: var(--text);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .fi::placeholder, .fta::placeholder { color: var(--muted); }
+    .fi.err { box-shadow: 0 0 0 2px var(--danger); }
+    .fta { resize: none; height: 88px; line-height: 1.55; }
+
+    /* iOS-style toggle row */
+    .tgl-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      border-radius: 12px;
+      padding: 13px 14px;
+      margin-bottom: 18px;
+    }
+    .tgl-label { font-size: var(--fs-md); }
+    .tgl { position: relative; width: 51px; height: 31px; flex-shrink: 0; }
+    .tgl input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .tgl-track {
+      position: absolute; inset: 0;
+      background: #E5E5EA;
+      border-radius: 31px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .tgl input:checked + .tgl-track { background: var(--green); }
+    .tgl-track::after {
+      content: '';
+      position: absolute;
+      width: 27px; height: 27px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px; left: 2px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      transition: transform .22s cubic-bezier(.25,.46,.45,.94);
+    }
+    .tgl input:checked + .tgl-track::after { transform: translateX(20px); }
+
+    .sh-save {
+      width: 100%;
+      height: 52px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: var(--fs-md);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .12s, opacity .12s;
+    }
+    .sh-save:active { transform: scale(.98); opacity: .82; }
+  </style>
+</head>
+<body>
+
+<!-- Navigation bar -->
+<header id="nav">
+  <div class="nav-inner">
+    <span class="nav-title">Daily Planner</span>
+    <span class="nav-date" id="nav-date"></span>
+  </div>
+</header>
+
+<!-- Scrollable content -->
+<main id="main">
+  <div class="sec">
+    <div class="sec-label">Today</div>
+    <div id="blocks-list"></div>
+  </div>
+  <div class="sec" id="tpl-sec" style="display:none">
+    <div class="sec-label">Templates</div>
+    <div class="tpl-group" id="tpl-list"></div>
+  </div>
+</main>
+
+<!-- Bottom bar -->
+<div id="bot-bar">
+  <button id="add-btn" onclick="openModal()">
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+      <path d="M7.5 1.5v12M1.5 7.5h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    Add Block
+  </button>
+</div>
+
+<!-- Overlay -->
+<div id="overlay" onclick="closeModal()"></div>
+
+<!-- Bottom sheet -->
+<div id="sheet">
+  <div class="sh-handle-wrap" id="sh-handle-wrap">
+    <div class="sh-handle"></div>
+  </div>
+  <div class="sh-head">
+    <span class="sh-title" id="sh-title">New Block</span>
+    <button class="sh-close" onclick="closeModal()" type="button">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+        <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+  <div class="sh-body">
+    <div class="fg time-pair">
+      <div>
+        <label class="fl">Start</label>
+        <input type="time" id="f-start" value="09:00">
+      </div>
+      <div>
+        <label class="fl">End</label>
+        <input type="time" id="f-end" value="10:00">
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl" for="f-title">Title</label>
+      <input class="fi" type="text" id="f-title" placeholder="What are you working on?" autocomplete="off">
+    </div>
+    <div class="fg">
+      <label class="fl" for="f-notes">Notes</label>
+      <textarea class="fta" id="f-notes" placeholder="Details, context, anything helpful…"></textarea>
+    </div>
+    <div class="tgl-row">
+      <span class="tgl-label">Save as template</span>
+      <label class="tgl">
+        <input type="checkbox" id="f-tpl">
+        <span class="tgl-track"></span>
+      </label>
+    </div>
+    <button class="sh-save" onclick="saveBlock()" type="button">Save Block</button>
+  </div>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────────────────────
+let blocks    = load('dp_blocks');
+let templates = load('dp_tpls');
+let editId    = null;
+
+// ─── Utils ──────────────────────────────────────────────────────
+function uid()     { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function load(k)   { try { return JSON.parse(localStorage.getItem(k) || '[]'); } catch { return []; } }
+function persist(k,v) { localStorage.setItem(k, JSON.stringify(v)); }
+function esc(s)    { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function haptic()  { if (navigator.vibrate) navigator.vibrate(8); }
+
+function to12h(t) {
+  if (!t) return '--:--';
+  const [h, m] = t.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM';
+  return `${String(h % 12 || 12).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+function toMins(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function addTime(t, mins) {
+  const total = (toMins(t) + mins) % 1440;
+  return `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
+}
+
+function calcDur(s, e) {
+  let d = toMins(e) - toMins(s);
+  if (d <= 0) d += 1440;
+  const h = Math.floor(d / 60), m = d % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function nextStart() {
+  if (!blocks.length) return '09:00';
+  const sorted = [...blocks].sort((a,b) => toMins(a.end) - toMins(b.end));
+  return sorted[sorted.length - 1].end;
+}
+
+function sorted(arr) {
+  return [...arr].sort((a,b) => toMins(a.start) - toMins(b.start));
+}
+
+// ─── Render ─────────────────────────────────────────────────────
+function renderDate() {
+  document.getElementById('nav-date').textContent =
+    new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+}
+
+function renderBlocks() {
+  const el   = document.getElementById('blocks-list');
+  const list = sorted(blocks);
+
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2.5"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div class="empty-text">No blocks yet<br>Tap Add Block to get started</div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(b => `
+    <div class="sw-wrap" data-id="${b.id}" data-open="0">
+      <div class="sw-actions">
+        <button class="sw-edit-btn" onclick="openEdit('${b.id}')">Edit</button>
+        <button class="sw-del-btn"  onclick="deleteBlock('${b.id}')">Delete</button>
+      </div>
+      <div class="bcard" data-id="${b.id}">
+        <div class="bcard-top">
+          <span class="bcard-time">${to12h(b.start)} – ${to12h(b.end)}</span>
+          <span class="bcard-dur">${calcDur(b.start, b.end)}</span>
+        </div>
+        <div class="bcard-title">${esc(b.title)}</div>
+        ${b.notes ? `<div class="bcard-notes">${esc(b.notes)}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  attachSwipe();
+}
+
+function renderTemplates() {
+  const sec = document.getElementById('tpl-sec');
+  const el  = document.getElementById('tpl-list');
+  if (!templates.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  el.innerHTML = templates.map(t => `
+    <div class="tpl-row" data-id="${t.id}" data-open="0">
+      <div class="tpl-del-zone"><span>Delete</span></div>
+      <div class="tpl-inner" onclick="useTpl('${t.id}')">
+        <div class="tpl-text">
+          <div class="tpl-name">${esc(t.title)}</div>
+          ${t.notes ? `<div class="tpl-note">${esc(t.notes)}</div>` : ''}
+        </div>
+        <span class="tpl-chev">›</span>
+      </div>
+    </div>`).join('');
+  attachTplSwipe();
+}
+
+// ─── Swipe to reveal actions ─────────────────────────────────────
+function makeSwipeable(el, getActions, onTap) {
+  let x0, y0, dx, dragging = false;
+  const OPEN_THRESHOLD = 0.35;
+
+  function clampX(raw) {
+    const max = -getActions().offsetWidth;
+    const open = el.closest('[data-open]')?.dataset.open === '1';
+    const base = open ? max : 0;
+    return Math.min(0, Math.max(max - 8, base + raw));
+  }
+
+  el.addEventListener('touchstart', e => {
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    dx = 0;
+    dragging = false;
+    el.classList.add('no-transition');
+  }, { passive: true });
+
+  el.addEventListener('touchmove', e => {
+    const ddx = e.touches[0].clientX - x0;
+    const ddy = e.touches[0].clientY - y0;
+    if (!dragging && Math.abs(ddy) > Math.abs(ddx)) {
+      el.classList.remove('no-transition');
+      return;
+    }
+    dragging = true;
+    dx = ddx;
+    el.style.transform = `translateX(${clampX(dx)}px)`;
+    e.preventDefault();
+  }, { passive: false });
+
+  el.addEventListener('touchend', () => {
+    el.classList.remove('no-transition');
+    const wrap = el.closest('[data-open]');
+    const actW = getActions().offsetWidth;
+    const isOpen = wrap?.dataset.open === '1';
+
+    if (!dragging) { onTap?.(); return; }
+
+    const shouldOpen = isOpen ? dx < actW * OPEN_THRESHOLD * -1 : dx < -actW * OPEN_THRESHOLD;
+    const targetX = shouldOpen ? -actW : 0;
+    el.style.transform = `translateX(${targetX}px)`;
+    if (wrap) wrap.dataset.open = shouldOpen ? '1' : '0';
+    if (!shouldOpen && isOpen) haptic();
+  });
+}
+
+function attachSwipe() {
+  document.querySelectorAll('.bcard').forEach(card => {
+    const wrap    = card.closest('.sw-wrap');
+    const actions = wrap.querySelector('.sw-actions');
+    makeSwipeable(card, () => actions, () => {
+      if (wrap.dataset.open === '1') {
+        card.style.transform = 'translateX(0)';
+        wrap.dataset.open = '0';
+      } else {
+        openEdit(card.dataset.id);
+      }
+    });
+  });
+}
+
+function attachTplSwipe() {
+  document.querySelectorAll('.tpl-inner').forEach(inner => {
+    const row     = inner.closest('.tpl-row');
+    const delZone = row.querySelector('.tpl-del-zone');
+    makeSwipeable(inner, () => delZone, () => {
+      if (row.dataset.open === '1') {
+        inner.style.transform = 'translateX(0)';
+        row.dataset.open = '0';
+      }
+      // tap handled by onclick on .tpl-inner
+    });
+  });
+}
+
+// ─── Sheet ──────────────────────────────────────────────────────
+function openModal(pre) {
+  editId = null;
+  document.getElementById('sh-title').textContent = 'New Block';
+  const s = pre?.start || nextStart();
+  const e = pre?.end   || addTime(s, 60);
+  document.getElementById('f-start').value = s;
+  document.getElementById('f-end').value   = e;
+  document.getElementById('f-title').value = pre?.title || '';
+  document.getElementById('f-notes').value = pre?.notes || '';
+  document.getElementById('f-tpl').checked = false;
+  document.getElementById('f-title').classList.remove('err');
+  showSheet();
+}
+
+function openEdit(id) {
+  const b = blocks.find(x => x.id === id);
+  if (!b) return;
+  editId = id;
+  document.getElementById('sh-title').textContent = 'Edit Block';
+  document.getElementById('f-start').value = b.start;
+  document.getElementById('f-end').value   = b.end;
+  document.getElementById('f-title').value = b.title;
+  document.getElementById('f-notes').value = b.notes || '';
+  document.getElementById('f-tpl').checked = false;
+  document.getElementById('f-title').classList.remove('err');
+  showSheet();
+}
+
+function showSheet() {
+  document.getElementById('sheet').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('bot-bar').style.opacity = '0';
+  document.getElementById('bot-bar').style.pointerEvents = 'none';
+  setTimeout(() => document.getElementById('f-title').focus(), 420);
+}
+
+function closeModal() {
+  document.getElementById('sheet').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('bot-bar').style.opacity = '';
+  document.getElementById('bot-bar').style.pointerEvents = '';
+  editId = null;
+}
+
+// ─── Drag-to-dismiss sheet ───────────────────────────────────────
+(function () {
+  const sheet = document.getElementById('sheet');
+  const wrap  = document.getElementById('sh-handle-wrap');
+  let y0, dy, dragging = false;
+
+  wrap.addEventListener('touchstart', e => {
+    y0 = e.touches[0].clientY;
+    dy = 0;
+    dragging = true;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+
+  wrap.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    sheet.style.transform = `translateY(${dy}px)`;
+  }, { passive: true });
+
+  wrap.addEventListener('touchend', () => {
+    dragging = false;
+    sheet.style.transition = '';
+    if (dy > 90) closeModal();
+    else sheet.style.transform = '';
+  });
+})();
+
+// ─── Save ────────────────────────────────────────────────────────
+function saveBlock() {
+  const title  = document.getElementById('f-title').value.trim();
+  const titleEl = document.getElementById('f-title');
+  if (!title) { titleEl.classList.add('err'); titleEl.focus(); return; }
+  titleEl.classList.remove('err');
+
+  const b = {
+    start: document.getElementById('f-start').value || '09:00',
+    end:   document.getElementById('f-end').value   || '10:00',
+    title,
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+
+  if (editId) {
+    blocks = blocks.map(x => x.id === editId ? { ...b, id: editId } : x);
+  } else {
+    blocks.push({ ...b, id: uid() });
+  }
+  persist('dp_blocks', blocks);
+
+  if (document.getElementById('f-tpl').checked) {
+    const idx = templates.findIndex(t => t.title.toLowerCase() === title.toLowerCase());
+    const td  = { id: uid(), title, notes: b.notes };
+    if (idx >= 0) templates[idx] = td; else templates.push(td);
+    persist('dp_tpls', templates);
+  }
+
+  renderBlocks();
+  renderTemplates();
+  closeModal();
+  haptic();
+}
+
+function deleteBlock(id) {
+  blocks = blocks.filter(b => b.id !== id);
+  persist('dp_blocks', blocks);
+  renderBlocks();
+  haptic();
+}
+
+function useTpl(id) {
+  const t = templates.find(x => x.id === id);
+  if (t) openModal({ title: t.title, notes: t.notes });
+}
+
+function deleteTpl(id) {
+  templates = templates.filter(t => t.id !== id);
+  persist('dp_tpls', templates);
+  renderTemplates();
+  haptic();
+}
+
+// ─── Tpl row delete via swipe confirm ───────────────────────────
+document.getElementById('tpl-list').addEventListener('click', e => {
+  const zone = e.target.closest('.tpl-del-zone');
+  if (!zone) return;
+  const row = zone.closest('.tpl-row');
+  if (row) deleteTpl(row.dataset.id);
+});
+
+// ─── Init ────────────────────────────────────────────────────────
+renderDate();
+renderBlocks();
+renderTemplates();
+</script>
+</body>
+</html>
