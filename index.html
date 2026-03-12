@@ -23,6 +23,9 @@
       --fs-lg:    20px;
       --fs-md:    15px;
       --fs-sm:    13px;
+      --max-w:    680px;
+      --col-l:    max(0px, calc(50vw - var(--max-w) / 2));
+      --col-r:    max(0px, calc(50vw - var(--max-w) / 2));
     }
 
     *, *::before, *::after {
@@ -35,7 +38,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-      background: var(--bg);
+      background: #DDDDE3;
       color: var(--text);
       font-size: var(--fs-md);
       line-height: 1.4;
@@ -45,10 +48,21 @@
       overscroll-behavior: none;
     }
 
+    /* App column background — fills the center column on desktop */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; bottom: 0;
+      left: var(--col-l);
+      right: var(--col-r);
+      background: var(--bg);
+      z-index: 0;
+    }
+
     /* ── Navigation bar ────────────────────────────── */
     #nav {
       position: fixed;
-      top: 0; left: 0; right: 0;
+      top: 0; left: var(--col-l); right: var(--col-r);
       z-index: 100;
       height: calc(var(--nav-h) + env(safe-area-inset-top));
       padding-top: env(safe-area-inset-top);
@@ -81,7 +95,7 @@
     /* ── Scrollable main ───────────────────────────── */
     #main {
       position: fixed;
-      inset: 0;
+      top: 0; bottom: 0; left: var(--col-l); right: var(--col-r);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: none;
@@ -254,7 +268,7 @@
     /* ── Bottom action bar ─────────────────────────── */
     #bot-bar {
       position: fixed;
-      left: 0; right: 0; bottom: 0;
+      left: var(--col-l); right: var(--col-r); bottom: 0;
       z-index: 100;
       height: calc(var(--bot-h) + env(safe-area-inset-bottom));
       padding-bottom: env(safe-area-inset-bottom);
@@ -303,7 +317,7 @@
     /* ── Bottom sheet ──────────────────────────────── */
     #sheet {
       position: fixed;
-      left: 0; right: 0; bottom: 0;
+      left: var(--col-l); right: var(--col-r); bottom: 0;
       z-index: 201;
       background: var(--surface);
       border-radius: 22px 22px 0 0;
